@@ -174,6 +174,7 @@ def solve(A: np.ndarray, b: np.ndarray, type: int) -> np.ndarray:
 
     assert m >= n
     assert b.shape[0] == m
+    assert b.shape[1] == 1
 
     Q = None
     R = None
