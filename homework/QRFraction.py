@@ -1,0 +1,229 @@
+import numpy as np
+
+
+def sgn(x: float) -> float:
+    """
+    sgn 函数实现
+    :param x: 浮点数
+    :return: sgn(x)
+    """
+    return 1 if x > 0 else -1
+
+
+def norm(A: np.ndarray) -> float:
+    """
+    求矩阵的 F 范数
+    :param A: 输入矩阵 形状为 [m,n]
+    :return: ||A||_F
+    """
+    m, n = A.shape
+    res = 0.0
+    for i in range(m):
+        for j in range(n):
+            res += A[i, j] ** 2
+
+    return res ** 0.5
+
+
+def rotation_matrix(row1: int, row2: int, a: float, b: float, m: int) -> np.ndarray:
+    """
+
+    :param row1: 元素 1 对应的行
+    :param row2: 元素 2 对应的行
+    :param a: 元素 1
+    :param b: 元素 2
+    :param m: 旋转矩阵规模
+    :return: G 旋转矩阵 形状 [m, m]
+    """
+    c = (a ** 2 + b ** 2) ** 0.5
+    G = np.eye(m)
+
+    G[row1, row1] = a / c
+    G[row2, row2] = a / c
+    G[row1, row2] = b / c
+    G[row2, row1] = - b / c
+
+    return G
+
+
+def embed(A: np.ndarray, m: int) -> np.ndarray:
+    """
+    将 n 维矩阵扩展为 m 维矩阵 形状为[[I, 0], [0,A]]
+    :param A: 输入矩阵 形状为 [n, n]
+    :param m: 扩展后大小
+    :return: 扩展矩阵 B
+    """
+    n = A.shape[0]
+    assert A.shape == (n, n)
+    assert m >= n
+    k = m - n
+    B = np.zeros((m, m), dtype=A.dtype)
+    # 左上角单位阵
+    B[:k, :k] = np.eye(k, dtype=A.dtype)
+    # 右下角放 A
+    B[k:, k:] = A
+    return B
+
+
+def Modified_Gram_Schmidt(A: np.ndarray) -> (np.ndarray, np.ndarray):
+    """
+    Modified Gram-Schmidt (MGS) 实现 QR 分解
+    :param A: 输入矩阵 形状为 [m, n], 且要求 rank(A) = n
+    :return: 正交分解 Q, R
+    """
+    m, n = A.shape
+    # 将 A 按列拆分
+    u = [A[:, i:i + 1] for i in range(n)]
+    # 生成 R 矩阵
+    R = np.zeros((n, n))
+
+    for i in range(n):
+        # 遍历每一列
+        # 归一化
+        v = norm(u[i])
+        if v < 1e-6:
+            print("数值异常")
+            exit(0)
+        u[i] = u[i] / v
+
+        # 消除后续向量的对应分量，并将系数写入 R 矩阵
+        R[i, i] = v
+        for j in range(i + 1, n):
+            r = u[i].T @ u[j]
+            u[j] = u[j] - r * u[i]
+            R[i, j] = r
+
+    # 将正交向量堆叠为 Q
+    Q = np.hstack(u)
+    return Q, R
+
+
+def Householder_Reflection(A: np.ndarray) -> (np.ndarray, np.ndarray):
+    """
+    Householder Reflection 实现 QR 分解
+    :param A: 输入矩阵 形状为 [m, n], 且要求 rank(A) = n
+    :return: 正交分解 Q, R
+    """
+    m, n = A.shape
+    # 生成 P 矩阵，生成 R 矩阵
+    P = np.eye(m)
+    T = A.copy()
+
+    for i in range(n):
+        # 遍历前 n 列
+        # 截取 u 向量，形状 [m - i, 1]
+        u = np.array(T[i:m, i:i + 1])
+        e1 = np.zeros((m - i, 1))
+        e1[0, 0] = 1
+        u = u - sgn(u[0, 0]) * norm(u) * e1
+
+        # 计算反射矩阵
+        v = (u.T @ u).item()
+        if v < 1e-6:
+            print("数值异常")
+            exit(0)
+
+        H = np.eye(m - i) - 2 * (u @ u.T) / v
+        H = embed(H, m)
+
+        # 记录结果
+        P = H @ P
+        T = H @ T
+
+    Q = P.T[:, :n]
+    R = T[:n, :]
+    return Q, R
+
+
+def Givens_Reflection(A: np.ndarray) -> (np.ndarray, np.ndarray):
+    """
+    Givens Reflection 实现 QR 分解
+    :param A: 输入矩阵 形状为 [m, n], 且要求 rank(A) = n
+    :return: 正交分解 Q, R
+    """
+    m, n = A.shape
+    T = A.copy()
+    P = np.eye(m)
+    for j in range(n):
+        # 遍历所有行
+        for i in range(j + 1, m):
+            # 遍历所有下三角元素
+            a = T[j, j]  # 对角线元素
+            b = T[i, j]  # 消去元素
+            if b == 0:
+                continue
+            # 获取旋转矩阵
+            G = rotation_matrix(j, i, a, b, m)
+            T = G @ T
+            P = G @ P
+
+    Q = P.T[:, :n]
+    R = T[:n, :]
+    return Q, R
+
+
+def solve(A: np.ndarray, b: np.ndarray, type: int) -> np.ndarray:
+    """
+    求解方程
+    :param A: 输入矩阵 形状为 [m, n], 且要求 rank(A) = n
+    :param b: 输入矩阵 形状为 [m, 1]
+    :param type: 使用的求解方法 0:MGS, 1:Householder, 2:Givens
+    :return: 解或近似解 x 形状为
+    """
+    m, n = A.shape
+
+    assert m >= n
+    assert b.shape[0] == m
+
+    Q = None
+    R = None
+    if type == 0:
+        Q, R = Modified_Gram_Schmidt(A)
+    elif type == 1:
+        Q, R = Householder_Reflection(A)
+    elif type == 2:
+        Q, R = Givens_Reflection(A)
+    else:
+        print("没有输入正确的求解方法")
+        exit(0)
+
+    print("QR分解结果为：")
+    print("Q：")
+    print(Q)
+    print("R：")
+    print(R)
+    print("解或最小二乘解为：")
+
+    b_hat = Q.T @ b
+    x = np.zeros((n, 1))
+    for i in reversed(range(n)):
+        s = R[i, i+1:] @ x[i + 1:]
+        x[i] = (b_hat[i] - s) / R[i, i]
+
+    print(x)
+    return x
+
+
+def main():
+    """
+    实现 rank(A) = n 矩阵的 QR 分解
+    :return: 0
+    """
+    A = np.array(
+        [[1, 0, -1],
+         [1, 2, 1],
+         [1, 1, -3],
+         [0, 1, 1]])
+
+    b = np.array(
+        [[1],
+         [1],
+         [1],
+         [1]])
+
+    solve(A, b, 0)
+    return 0
+
+
+if __name__ == '__main__':
+    main()
