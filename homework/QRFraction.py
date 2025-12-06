@@ -168,7 +168,7 @@ def solve(A: np.ndarray, b: np.ndarray, type: int) -> np.ndarray:
     :param A: 输入矩阵 形状为 [m, n], 且要求 rank(A) = n
     :param b: 输入矩阵 形状为 [m, 1]
     :param type: 使用的求解方法 0:MGS, 1:Householder, 2:Givens
-    :return: 解或近似解 x 形状为
+    :return: 解或近似解 x 形状为 [n, 1]
     """
     m, n = A.shape
 
@@ -282,6 +282,8 @@ def main():
     b = input_vector(m)
 
     solve(A, b, t)
+
+    input()
 
 
 if __name__ == '__main__':
