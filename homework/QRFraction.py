@@ -81,7 +81,7 @@ def Modified_Gram_Schmidt(A: np.ndarray) -> (np.ndarray, np.ndarray):
         # 遍历每一列
         # 归一化
         v = norm(u[i])
-        if v < 1e-6:
+        if v < 1e-16:
             print("数值异常")
             exit(0)
         u[i] = u[i] / v
@@ -150,7 +150,7 @@ def Givens_Reflection(A: np.ndarray) -> (np.ndarray, np.ndarray):
             # 遍历所有下三角元素
             a = T[j, j]  # 对角线元素
             b = T[i, j]  # 消去元素
-            if b == 0:
+            if b < 1e-16:
                 continue
             # 获取旋转矩阵
             G = rotation_matrix(j, i, a, b, m)
@@ -188,12 +188,15 @@ def solve(A: np.ndarray, b: np.ndarray, type: int) -> np.ndarray:
         print("没有输入正确的求解方法")
         exit(0)
 
-    print("QR分解结果为：")
-    print("Q：")
-    print(Q)
-    print("R：")
-    print(R)
-    print("解或最小二乘解为：")
+    print("\n==============================")
+    print("          QR 分解结果")
+    print("==============================")
+    print("Q =\n", Q)
+    print("R =\n", R)
+
+    print("\n==============================")
+    print("     方程 Ax = b 的解/最小二乘解")
+    print("==============================")
 
     b_hat = Q.T @ b
     x = np.zeros((n, 1))
@@ -205,25 +208,80 @@ def solve(A: np.ndarray, b: np.ndarray, type: int) -> np.ndarray:
     return x
 
 
+def input_matrix(m, n):
+    """
+    矩阵输入
+    :param m: 行数
+    :param n: 列数
+    :return: 输入矩阵
+    """
+    print("\n请输入矩阵 A（每行输入 {} 个数字，用空格分隔）".format(n))
+    A = []
+    for i in range(m):
+        while True:
+            try:
+                row = input(f"A 第 {i+1} 行：")
+                nums = list(map(float, row.split()))
+                if len(nums) != n:
+                    raise ValueError
+                A.append(nums)
+                break
+            except:
+                print("输入格式错误，请重新输入。")
+    return np.array(A)
+
+
+def input_vector(m):
+    """
+    向量输入
+    :param m: 行数
+    :return: 输入的列向量
+    """
+    print("\n请输入向量 b（每行 1 个数字）")
+    b = []
+    for i in range(m):
+        while True:
+            try:
+                val = float(input(f"b 第 {i+1} 个元素："))
+                b.append([val])
+                break
+            except:
+                print("输入格式错误，请重新输入。")
+    return np.array(b)
+
+
 def main():
-    """
-    实现 rank(A) = n 矩阵的 QR 分解
-    :return: 0
-    """
-    A = np.array(
-        [[1, 0, -1],
-         [1, 2, 1],
-         [1, 1, -3],
-         [0, 1, 1]])
+    print("===================================")
+    print("   QR 分解程序（MGS / Householder / Givens）")
+    print("===================================\n")
 
-    b = np.array(
-        [[1],
-         [1],
-         [1],
-         [1]])
+    # 选择方法
+    while True:
+        try:
+            t = int(input("请选择方法（0-MGS，1-Householder，2-Givens）："))
+            if t in [0, 1, 2]:
+                break
+            else:
+                print("请输入 0、1 或 2。")
+        except:
+            print("输入错误，请输入数字。")
 
-    solve(A, b, 0)
-    return 0
+    # 输入矩阵大小
+    while True:
+        try:
+            m = int(input("\n请输入矩阵 A 的行数 m："))
+            n = int(input("请输入矩阵 A 的列数 n（要求 m ≥ n）："))
+            if m >= n > 0 and m > 0:
+                break
+            else:
+                print("必须满足 m ≥ n 且均为正整数。")
+        except:
+            print("输入错误，请输入整数。")
+
+    A = input_matrix(m, n)
+    b = input_vector(m)
+
+    solve(A, b, t)
 
 
 if __name__ == '__main__':
